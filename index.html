@@ -3,139 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rifle Company Veterans Database</title>
+    <title>Able Company 506th Roster</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body { font-family: 'Georgia', serif; background: #f4f1ea; color: #333; margin: 0; padding: 20px; }
-        h1 { text-align: center; color: #4a5d23; margin-bottom: 20px; }
         
-        /* Search Bar Styles */
+        h1 { text-align: center; color: #4a5d23; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 20px; font-size: 2.5em; }
+        .title-logo { height: 1.8em; width: auto; display: block; }
+
         #search-container { text-align: center; margin-bottom: 40px; }
-        #search-bar { 
-            width: 80%; 
-            max-width: 500px; 
-            padding: 12px 20px; 
-            font-size: 1.1em; 
-            border: 1px solid #ccc; 
-            border-radius: 25px;
-            outline: none;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
+        #search-bar { width: 80%; max-width: 500px; padding: 12px 20px; font-size: 1.1em; border: 1px solid #ccc; border-radius: 25px; outline: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
-        #roster { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
-            gap: 25px; 
-            max-width: 1200px; 
-            margin: 0 auto; 
-        }
+        #roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 25px; max-width: 1200px; margin: 0 auto; }
 
-        /* --- GALLERY CARD STYLES --- */
+        /* --- UPDATED 3-D GALLERY CARD STYLES --- */
         .card { 
             background: white; 
-            border: 1px solid #ccc; 
-            padding: 15px; 
+            border: 4px solid #333; /* Thick 3-D Border */
+            padding: 25px; 
             text-align: center; 
             cursor: pointer; 
             transition: transform 0.2s; 
-            box-shadow: 2px 2px 8px rgba(0,0,0,0.1); 
-            position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4); /* Deep 3-D Shadow */
+            position: relative; 
         }
-        .card:hover { transform: translateY(-5px); }
-        .card img { width: 100%; height: 250px; object-fit: cover; object-position: top center; background-color: #eee; display: block; }
-
-        /* Stacked Badges on Card Front */
-        .badge-container-front {
+        .card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(0,0,0,0.5); }
+        
+        /* Inner Gold Border for Gallery Cards */
+        .card::after {
+            content: "";
             position: absolute;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            z-index: 5;
+            top: 8px; left: 8px; right: 8px; bottom: 8px;
+            border: 2px solid #d4af37;
+            pointer-events: none;
         }
 
-        .card-badge {
-            padding: 3px 8px;
-            font-weight: bold;
-            font-size: 0.8em;
-            color: white;
-            border-radius: 3px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-            text-align: center;
-            min-width: 40px;
-        }
+        .card img { width: 100%; height: 250px; object-fit: cover; object-position: top center; background-color: #eee; display: block; border: 1px solid #333; position: relative; z-index: 1; }
+        .card h3 { margin: 15px 0 5px 0; font-size: 1.2em; text-transform: uppercase; position: relative; z-index: 1; }
+        .card-dates { font-size: 0.9em; color: #666; font-weight: bold; position: relative; z-index: 1; }
+
+        .badge-container-front { position: absolute; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; z-index: 5; }
+        .card-badge { padding: 3px 8px; font-weight: bold; font-size: 0.8em; color: white; border-radius: 3px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); text-align: center; min-width: 40px; }
         .card-badge-kia { background-color: #cc0000; }
         .card-badge-swa { background-color: #ff8c00; }
         .card-badge-lwa { background-color: #d4af37; }
-        .card-badge-pow { background-color: #000000; color: #ffffff; } /* Black for POW */
+        .card-badge-pow { background-color: #000000; color: #ffffff; }
 
-        /* --- MODAL (POPUP) STYLES --- */
-        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 99; }
-        #modal { 
-            display: none; 
-            position: fixed; 
-            top: 50%; left: 50%; 
-            transform: translate(-50%, -50%); 
-            background: white; 
-            padding: 40px; 
-            border: 1px solid #333; 
-            z-index: 100; 
-            width: 90%; 
-            max-width: 550px; 
-            text-align: center; 
-            max-height: 85vh; 
-            overflow-y: auto; 
-            box-sizing: border-box; 
-        }
+        /* --- MODAL STYLES --- */
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 999; }
+        #modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 4px solid #333; z-index: 1000; width: 90%; max-width: 500px; text-align: center; max-height: 90vh; overflow-y: auto; box-sizing: border-box; box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
         
-        .status-group { display: flex; justify-content: flex-end; gap: 10px; font-weight: bold; font-size: 1.4em; margin-bottom: 10px; }
+        .modal-inner-border { border: 2px solid #d4af37; margin: 10px; padding: 25px; position: relative; }
+
+        .status-group { display: flex; justify-content: flex-end; gap: 10px; font-weight: bold; font-size: 1.4em; margin-bottom: 10px; position: relative; z-index: 101; }
         .m-badge { display: none; }
         .m-badge-kia { color: #cc0000; }
         .m-badge-swa { color: #ff8c00; }
         .m-badge-lwa { color: #d4af37; }
-        .m-badge-pow { color: #000000; }
+        .m-badge-pow { color: #000; }
 
-        #m-name { font-size: 2.2em; margin: 0; text-transform: uppercase; line-height: 1.1; }
-        #m-lifespan { font-size: 1.2em; font-weight: bold; margin: 5px 0; }
-        #m-homestate { font-size: 1.1em; color: #555; margin-bottom: 20px; font-style: italic; }
-        #m-img { width: 100%; max-width: 320px; height: auto; border: 1px solid #000; margin: 0 auto 20px auto; display: block; }
-        
-        .info-list { text-align: left; font-family: Arial, sans-serif; line-height: 1.6; border-top: 1px solid #eee; padding-top: 20px; }
-        button { margin-top: 30px; cursor: pointer; padding: 10px 20px; background: #4a5d23; color: white; border: none; font-weight: bold; }
+        #m-name { font-size: 2.2em; margin: 0; text-transform: uppercase; position: relative; z-index: 101; }
+        #m-lifespan { font-size: 1.1em; font-weight: bold; margin: 5px 0; }
+        #m-homestate { font-size: 1em; color: #555; margin-bottom: 15px; font-style: italic; }
+        #m-img { width: 100%; max-width: 300px; height: auto; border: 1px solid #000; margin: 0 auto 10px auto; display: block; position: relative; z-index: 101; }
+        #m-sn-display { font-weight: bold; margin-bottom: 20px; font-size: 1.1em; position: relative; z-index: 101; }
+
+        .info-list { text-align: left; font-family: Arial, sans-serif; line-height: 1.6; border-top: 1px solid #eee; padding-top: 15px; font-size: 0.95em; position: relative; z-index: 101; }
+        .stacked-date { display: block; margin-left: 90px; }
+        .stacked-date:first-child { margin-left: 0; display: inline; }
+
+        #link-section { margin-top: 20px; padding-top: 10px; border-top: 1px dashed #ccc; display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 101; }
+        .vet-link { color: #4a5d23; text-decoration: underline; font-weight: bold; cursor: pointer; }
+
+        button { margin-top: 25px; cursor: pointer; padding: 10px 22px; background: #4a5d23; color: white; border: none; font-weight: bold; position: relative; z-index: 102; }
     </style>
 </head>
 <body>
 
-    <h1>Company Roster</h1>
+    <h1>
+        <img src="101st-airborne-logo.png" alt="" class="title-logo" onerror="this.style.display='none'">
+        Able Company 506th Roster
+        <img src="101st-airborne-logo.png" alt="" class="title-logo" onerror="this.style.display='none'">
+    </h1>
 
     <div id="search-container">
-        <input type="text" id="search-bar" placeholder="Search by name, serial number, or status (KIA/SWA/LWA/POW)..." onkeyup="filterRoster()">
+        <input type="text" id="search-bar" placeholder="Search by name or SN..." onkeyup="filterRoster()">
     </div>
     
-    <div id="roster">Loading roster...</div>
+    <div id="roster">Loading roster database...</div>
 
     <div id="modal-overlay" onclick="closeModal()"></div>
     <div id="modal">
-        <div class="status-group">
-            <span id="m-kia-badge" class="m-badge m-badge-kia">KIA</span>
-            <span id="m-swa-badge" class="m-badge m-badge-swa">SWA</span>
-            <span id="m-lwa-badge" class="m-badge m-badge-lwa">LWA</span>
-            <span id="m-pow-badge" class="m-badge m-badge-pow">POW</span>
+        <div class="modal-inner-border">
+            <div class="status-group">
+                <span id="m-kia-badge" class="m-badge m-badge-kia">KIA</span>
+                <span id="m-swa-badge" class="m-badge m-badge-swa">SWA</span>
+                <span id="m-lwa-badge" class="m-badge m-badge-lwa">LWA</span>
+                <span id="m-pow-badge" class="m-badge m-badge-pow">POW</span>
+            </div>
+            <h2 id="m-name"></h2>
+            <div id="m-lifespan"></div>
+            <div id="m-homestate"></div>
+            <img id="m-img" src="">
+            <div id="m-sn-display"></div>
+            <div class="info-list" id="m-info"></div>
+            <div id="link-section"></div>
+            <button onclick="closeModal()">Close Details</button>
         </div>
-        <h2 id="m-name"></h2>
-        <div id="m-lifespan"></div>
-        <div id="m-homestate"></div>
-        <img id="m-img" src="">
-        <div class="info-list">
-            <p><strong>Serial Number:</strong> <span id="m-sn"></span></p>
-            <p><strong>Egress Date:</strong> <span id="m-egress"></span></p>
-            <p id="kia-row" style="display:none;"><strong>KIA Date:</strong> <span id="m-kia-date"></span></p>
-            <p id="swa-row" style="display:none;"><strong>Seriously Wounded in Action Dates:</strong> <span id="m-swa-dates"></span></p>
-            <p id="lwa-row" style="display:none;"><strong>Lightly Wounded in Action Dates:</strong> <span id="m-lwa-dates"></span></p>
-            <p id="pow-row" style="display:none;"><strong>Date Captured:</strong> <span id="m-pow-date"></span></p>
-        </div>
-        <button onclick="closeModal()">Close Details</button>
     </div>
 
     <script>
@@ -143,13 +117,18 @@
         const googleSheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSuyvT7cz5osdEQqROHhV0BkW8IAttDbwDMp9_oj0Ce0MOHTwmANIGQ4WZMJNS173g2ek4N5juzF057/pub?gid=1531532639&single=true&output=csv";
 
         Papa.parse(googleSheetUrl + "&cache_break=" + new Date().getTime(), {
-            download: true,
-            header: true,
-            skipEmptyLines: true,
+            download: true, header: true, skipEmptyLines: true,
             transformHeader: h => h.trim().toLowerCase().replace(/\s/g, '_'),
-            complete: results => {
-                allVeterans = results.data;
-                displayRoster(allVeterans);
+            complete: results => { 
+                // --- NEW: Alphabetical Sorting by Last Name ---
+                allVeterans = results.data.filter(v => v.name).sort((a, b) => {
+                    const nameA = a.name.trim().split(" ");
+                    const nameB = b.name.trim().split(" ");
+                    const lastNameA = nameA[nameA.length - 1].toLowerCase();
+                    const lastNameB = nameB[nameB.length - 1].toLowerCase();
+                    return lastNameA.localeCompare(lastNameB);
+                });
+                displayRoster(allVeterans); 
             }
         });
 
@@ -158,19 +137,36 @@
             return s !== "" && s.toUpperCase() !== "N/A";
         }
 
+        function formatSingleDate(dateStr) {
+            const date = new Date(dateStr);
+            if (isNaN(date)) return dateStr;
+            const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const day = date.getDate();
+            const year = date.getFullYear();
+            let suffix = "th";
+            if (day % 10 === 1 && day !== 11) suffix = "st";
+            else if (day % 10 === 2 && day !== 12) suffix = "nd";
+            else if (day % 10 === 3 && day !== 13) suffix = "rd";
+            return `${months[date.getMonth()]} ${day}${suffix}, ${year}`;
+        }
+
+        function formatDate(dateStr) {
+            if (!hasData(dateStr)) return "";
+            const dates = dateStr.split(',').map(d => d.trim()).filter(d => d !== "");
+            if (dates.length > 1) {
+                dates.sort((a, b) => new Date(a) - new Date(b));
+                return dates.map((d, index) => {
+                    const f = formatSingleDate(d);
+                    return index === 0 ? f : `<span class="stacked-date">${f}</span>`;
+                }).join('<br>');
+            }
+            return formatSingleDate(dates[0]);
+        }
+
         function filterRoster() {
             const query = document.getElementById('search-bar').value.toLowerCase();
             const filtered = allVeterans.filter(vet => {
-                const name = (vet.name || "").toLowerCase();
-                const sn = (vet.sn || "").toLowerCase();
-                const isKIA = hasData(vet.date_killed) ? "kia" : "";
-                const isSWA = hasData(vet.swa_dates) ? "swa" : "";
-                const isLWA = hasData(vet.lwa_dates) ? "lwa" : "";
-                const isPOW = hasData(vet.pow) ? "pow" : "";
-                
-                return name.includes(query) || sn.includes(query) || 
-                       isKIA.includes(query) || isSWA.includes(query) || 
-                       isLWA.includes(query) || isPOW.includes(query);
+                return (vet.name || "").toLowerCase().includes(query) || (vet.sn || "").toLowerCase().includes(query);
             });
             displayRoster(filtered);
         }
@@ -180,61 +176,61 @@
             rosterDiv.innerHTML = '';
             data.forEach(vet => {
                 if(!vet.name) return;
-
-                const isKIA = hasData(vet.date_killed);
-                const isSWA = hasData(vet.swa_dates);
-                const isLWA = hasData(vet.lwa_dates);
-                const isPOW = hasData(vet.pow);
-
                 const card = document.createElement('div');
                 card.className = 'card';
-                
+                const entry = hasData(vet.entry_date) ? vet.entry_date : "???";
+                const egress = hasData(vet.egress_date) ? vet.egress_date : "???";
                 let badgeHTML = `<div class="badge-container-front">`;
-                if (isKIA) badgeHTML += `<div class="card-badge card-badge-kia">KIA</div>`;
-                if (isSWA) badgeHTML += `<div class="card-badge card-badge-swa">SWA</div>`;
-                if (isLWA) badgeHTML += `<div class="card-badge card-badge-lwa">LWA</div>`;
-                if (isPOW) badgeHTML += `<div class="card-badge card-badge-pow">POW</div>`;
+                if (hasData(vet.date_killed)) badgeHTML += `<div class="card-badge card-badge-kia">KIA</div>`;
+                if (hasData(vet.swa_dates)) badgeHTML += `<div class="card-badge card-badge-swa">SWA</div>`;
+                if (hasData(vet.lwa_dates)) badgeHTML += `<div class="card-badge card-badge-lwa">LWA</div>`;
+                if (hasData(vet.pow)) badgeHTML += `<div class="card-badge card-badge-pow">POW</div>`;
                 badgeHTML += `</div>`;
-
                 const imgSrc = vet.image_url || "https://via.placeholder.com/300x400?text=No+Photo";
-                card.innerHTML = `${badgeHTML}<img src="${imgSrc}" loading="lazy"><h3>${vet.name}</h3>`;
+                card.innerHTML = `${badgeHTML}<img src="${imgSrc}" loading="lazy"><h3>${vet.name}</h3><div class="card-dates">${entry} - ${egress}</div>`;
                 card.onclick = () => showDetails(vet);
                 rosterDiv.appendChild(card);
             });
         }
 
         function showDetails(vet) {
-            document.getElementById('m-name').innerText = vet.name || "Unknown";
-            document.getElementById('m-sn').innerText = vet.sn || "N/A";
-            document.getElementById('m-egress').innerText = vet.egress_date || "N/A";
+            document.getElementById('m-name').innerText = vet.name || "";
             document.getElementById('m-homestate').innerText = vet.home_state || "";
-            document.getElementById('m-lifespan').innerText = (vet.date_of_birth || "???") + " - " + (vet.date_of_death || "Present");
+            document.getElementById('m-lifespan').innerText = (vet.date_of_birth || "") + " - " + (vet.date_of_death || "");
             document.getElementById('m-img').src = vet.image_url || "https://via.placeholder.com/350x450?text=No+Photo+Available";
-
-            // KIA Logic
-            const isKIA = hasData(vet.date_killed);
-            document.getElementById('m-kia-badge').style.display = isKIA ? "inline" : "none";
-            document.getElementById('kia-row').style.display = isKIA ? "block" : "none";
-            document.getElementById('m-kia-date').innerText = vet.date_killed;
-
-            // SWA Logic
-            const isSWA = hasData(vet.swa_dates);
-            document.getElementById('m-swa-badge').style.display = isSWA ? "inline" : "none";
-            document.getElementById('swa-row').style.display = isSWA ? "block" : "none";
-            document.getElementById('m-swa-dates').innerText = vet.swa_dates;
-
-            // LWA Logic
-            const isLWA = hasData(vet.lwa_dates);
-            document.getElementById('m-lwa-badge').style.display = isLWA ? "inline" : "none";
-            document.getElementById('lwa-row').style.display = isLWA ? "block" : "none";
-            document.getElementById('m-lwa-dates').innerText = vet.lwa_dates;
-
-            // POW Logic
-            const isPOW = hasData(vet.pow);
-            document.getElementById('m-pow-badge').style.display = isPOW ? "inline" : "none";
-            document.getElementById('pow-row').style.display = isPOW ? "block" : "none";
-            document.getElementById('m-pow-date').innerText = vet.pow;
-
+            document.getElementById('m-sn-display').innerText = hasData(vet.sn) ? `SN: ${vet.sn}` : "";
+            document.getElementById('m-kia-badge').style.display = hasData(vet.date_killed) ? "inline" : "none";
+            document.getElementById('m-swa-badge').style.display = hasData(vet.swa_dates) ? "inline" : "none";
+            document.getElementById('m-lwa-badge').style.display = hasData(vet.lwa_dates) ? "inline" : "none";
+            document.getElementById('m-pow-badge').style.display = hasData(vet.pow) ? "inline" : "none";
+            
+            const infoBox = document.getElementById('m-info');
+            infoBox.innerHTML = "";
+            const rows = [
+                { label: "DOB", val: vet.date_of_birth },
+                { label: "Entry", val: vet.entry_date },
+                { label: "Date IOJ", val: vet.ioj_dates },
+                { label: "LWA Dates", val: vet.lwa_dates },
+                { label: "SWA Dates", val: vet.swa_dates },
+                { label: "Date Captured", val: vet.pow },
+                { label: "KIA", val: vet.date_killed }
+            ];
+            rows.forEach(row => {
+                if(hasData(row.val)) {
+                    infoBox.innerHTML += `<p><strong>${row.label}:</strong> ${formatDate(row.val)}</p>`;
+                }
+            });
+            const sameAsKIA = hasData(vet.egress_date) && hasData(vet.date_killed) && (vet.egress_date.trim() === vet.date_killed.trim());
+            if (hasData(vet.egress_date) && !sameAsKIA) {
+                infoBox.innerHTML += `<p><strong>Egress:</strong> ${formatDate(vet.egress_date)}</p>`;
+            }
+            if (hasData(vet.date_of_death) && !hasData(vet.date_killed)) {
+                infoBox.innerHTML += `<p><strong>Died:</strong> ${formatDate(vet.date_of_death)}</p>`;
+            }
+            const linkBox = document.getElementById('link-section');
+            linkBox.innerHTML = "";
+            if(hasData(vet.nara_link)) linkBox.innerHTML += `<a href="${vet.nara_link}" target="_blank" class="vet-link">NARA Record</a>`;
+            if(hasData(vet.grave_link)) linkBox.innerHTML += `<a href="${vet.grave_link}" target="_blank" class="vet-link">Find a Grave</a>`;
             document.getElementById('modal').style.display = 'block';
             document.getElementById('modal-overlay').style.display = 'block';
             document.getElementById('modal').scrollTop = 0;
