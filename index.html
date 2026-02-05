@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rifle Company Veterans Database</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body { font-family: 'Georgia', serif; background: #f4f1ea; color: #333; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #4a5d23; margin-bottom: 40px; }
+        
+        #roster { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+            gap: 25px; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+        }
+
+        /* --- GALLERY CARD STYLES --- */
+        .card { 
+            background: white; 
+            border: 1px solid #ccc; 
+            padding: 15px; 
+            text-align: center; 
+            cursor: pointer; 
+            transition: transform 0.2s; 
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.1); 
+            position: relative;
+        }
+        .card:hover { transform: translateY(-5px); }
+        
+        .card img { 
+            width: 100%; 
+            height: 250px; 
+            object-fit: cover; 
+            object-position: top center; 
+            background-color: #eee; 
+            display: block;
+        }
+
+        /* Container for badges on the front of the card */
+        .badge-container-front {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 5;
+        }
+
+        .card-badge {
+            padding: 3px 8px;
+            font-weight: bold;
+            font-size: 0.85em;
+            color: white;
+            border-radius: 3px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .card-badge-kia { background-color: #cc0000; }
+        .card-badge-wia { background-color: #d4af37; }
+
+        /* --- MODAL (POPUP) STYLES --- */
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 99; }
+        #modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 40px; border: 1px solid #333; z-index: 100; width: 90%; max-width: 550px; text-align: center; }
+        
+        /* Flex group for top-right badges in modal */
+        .status-group { 
+            position: absolute; 
+            top: 25px; 
+            right: 25px; 
+            display: flex;
+            gap: 10px;
+            font-weight: bold; 
+            font-size: 1.6em; 
+        }
+        .badge-kia { color: #cc0000; display: none; }
+        .badge-wia { color: #d4af37; display: none; }
+
+        #m-name { font-size: 2.4em; margin: 0; text-transform: uppercase; }
+        #m-lifespan { font-size: 1.3em; font-weight: bold; }
+        #m-homestate { font-size: 1.1em; color: #555; margin-bottom: 20px; font-style: italic; }
+        #m-img { width: 100%; max-width: 350px; height: 450px; object-fit: cover; border: 1px solid #000; margin: 0 auto 20px auto; display: block; }
+        
+        .info-list { text-align: left; font-family: Arial, sans-serif; line-height: 1.8; border-top: 1px solid #eee; padding-top: 20px; }
+        button { margin-top: 30px; cursor: pointer; padding: 10px 20px; background: #4a5d23; color: white; border: none; }
+    </style>
+</head>
+<body>
+
+    <h1>Company Roster</h1>
+    <div id="roster">Loading roster...</div>
+
+    <div id="modal-overlay" onclick="closeModal()"></div>
+    <div id="modal">
+        <div class="status-group">
+            <span id="m-kia-badge" class="badge-kia">KIA</span>
+            <span id="m-wia-badge" class="badge-wia">WIA</span>
+        </div>
+        <h2 id="m-name"></h2>
+        <div id="m-lifespan"></div>
+        <div id="m-homestate"></div>
+        <img id="m-img" src="">
+        <div class="info-list">
+            <p><strong>Serial Number:</strong> <span id="m-sn"></span></p>
+            <p><strong>Egress Date:</strong> <span id="m-egress"></span></p>
+            <p id="kia-date-row" style="display:none;"><strong>KIA Date:</strong> <span id="m-kia-date"></span></p>
+            <p id="wia-date-row" style="display:none;"><strong>Date wounded:</strong> <span id="m-wia-dates"></span></p>
+        </div>
+        <button onclick="closeModal()">Close Details</button>
+    </div>
+
+    <script>
+        const googleSheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSuyvT7cz5osdEQqROHhV0BkW8IAttDbwDMp9_oj0Ce0MOHTwmANIGQ4WZMJNS173g2ek4N5juzF057/pub?gid=1531532639&single=true&output=csv";
+
+        Papa.parse(googleSheetUrl + "&cache_break=" + new Date().getTime(), {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            transformHeader: h => h.trim().toLowerCase().replace(/\s/g, '_'),
+            complete: results => displayRoster(results.data)
+        });
+
+        function hasData(val) {
+            const s = String(val || "").trim();
+            return s !== "" && s.toUpperCase() !== "N/A";
+        }
+
+        function displayRoster(data) {
+            const rosterDiv = document.getElementById('roster');
+            rosterDiv.innerHTML = '';
+            data.forEach(vet => {
+                if(!vet.name) return;
+
+                const isKIA = hasData(vet.date_killed);
+                const isWIA = hasData(vet.swa_dates) || hasData(vet.lwa_dates);
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                // Front badge logic: allow both to appear stacked
+                let badgeHTML = `<div class="badge-container-front">`;
+                if (isKIA) badgeHTML += `<div class="card-badge card-badge-kia">KIA</div>`;
+                if (isWIA) badgeHTML += `<div class="card-badge card-badge-wia">WIA</div>`;
+                badgeHTML += `</div>`;
+
+                const imgSrc = (vet.image_url) ? vet.image_url : "https://via.placeholder.com/300x400?text=No+Photo";
+                
+                card.innerHTML = `
+                    ${badgeHTML}
+                    <img src="${imgSrc}" loading="lazy">
+                    <h3>${vet.name}</h3>
+                `;
+                
+                card.onclick = () => showDetails(vet);
+                rosterDiv.appendChild(card);
+            });
+        }
+
+        function showDetails(vet) {
+            document.getElementById('m-name').innerText = vet.name || "Unknown";
+            document.getElementById('m-sn').innerText = vet.sn || "N/A";
+            document.getElementById('m-egress').innerText = vet.egress_date || "N/A";
+            document.getElementById('m-homestate').innerText = vet.home_state || "";
+            document.getElementById('m-lifespan').innerText = (vet.date_of_birth || "???") + " - " + (vet.date_of_death || "Present");
+            document.getElementById('m-img').src = vet.image_url || "https://via.placeholder.com/350x450?text=No+Photo+Available";
+
+            // KIA Logic
+            const isKIA = hasData(vet.date_killed);
+            document.getElementById('m-kia-badge').style.display = isKIA ? "inline" : "none";
+            document.getElementById('kia-date-row').style.display = isKIA ? "block" : "none";
+            document.getElementById('m-kia-date').innerText = vet.date_killed;
+
+            // WIA Logic (SWA + LWA)
+            const swa = hasData(vet.swa_dates) ? String(vet.swa_dates).trim() : "";
+            const lwa = hasData(vet.lwa_dates) ? String(vet.lwa_dates).trim() : "";
+            let allWoundDates = [swa, lwa].filter(x => x !== "").join(", ");
+            
+            const isWIA = allWoundDates !== "";
+            document.getElementById('m-wia-badge').style.display = isWIA ? "inline" : "none";
+            document.getElementById('wia-date-row').style.display = isWIA ? "block" : "none";
+            document.getElementById('m-wia-dates').innerText = allWoundDates;
+
+            document.getElementById('modal').style.display = 'block';
+            document.getElementById('modal-overlay').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
