@@ -39,7 +39,7 @@
             display: block;
         }
 
-        /* Container for badges on the front of the card */
+        /* Stacked Badges on Card Front */
         .badge-container-front {
             position: absolute;
             top: 20px;
@@ -53,39 +53,58 @@
         .card-badge {
             padding: 3px 8px;
             font-weight: bold;
-            font-size: 0.85em;
+            font-size: 0.8em;
             color: white;
             border-radius: 3px;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
             text-align: center;
+            min-width: 40px;
         }
         .card-badge-kia { background-color: #cc0000; }
-        .card-badge-wia { background-color: #d4af37; }
+        .card-badge-swa { background-color: #ff8c00; } /* Orange for SWA */
+        .card-badge-lwa { background-color: #d4af37; } /* Gold for LWA */
 
         /* --- MODAL (POPUP) STYLES --- */
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 99; }
-        #modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 40px; border: 1px solid #333; z-index: 100; width: 90%; max-width: 550px; text-align: center; }
         
-        /* Flex group for top-right badges in modal */
+        #modal { 
+            display: none; 
+            position: fixed; 
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: white; 
+            padding: 40px; 
+            border: 1px solid #333; 
+            z-index: 100; 
+            width: 90%; 
+            max-width: 550px; 
+            text-align: center;
+            /* FIX: Added scrolling for the modal content */
+            max-height: 85vh; 
+            overflow-y: auto; 
+            box-sizing: border-box;
+        }
+        
         .status-group { 
-            position: absolute; 
-            top: 25px; 
-            right: 25px; 
             display: flex;
+            justify-content: flex-end;
             gap: 10px;
             font-weight: bold; 
-            font-size: 1.6em; 
+            font-size: 1.4em;
+            margin-bottom: 10px;
         }
-        .badge-kia { color: #cc0000; display: none; }
-        .badge-wia { color: #d4af37; display: none; }
+        .m-badge { display: none; }
+        .m-badge-kia { color: #cc0000; }
+        .m-badge-swa { color: #ff8c00; }
+        .m-badge-lwa { color: #d4af37; }
 
-        #m-name { font-size: 2.4em; margin: 0; text-transform: uppercase; }
-        #m-lifespan { font-size: 1.3em; font-weight: bold; }
+        #m-name { font-size: 2.2em; margin: 0; text-transform: uppercase; line-height: 1.1; }
+        #m-lifespan { font-size: 1.2em; font-weight: bold; margin: 5px 0; }
         #m-homestate { font-size: 1.1em; color: #555; margin-bottom: 20px; font-style: italic; }
-        #m-img { width: 100%; max-width: 350px; height: 450px; object-fit: cover; border: 1px solid #000; margin: 0 auto 20px auto; display: block; }
+        #m-img { width: 100%; max-width: 320px; height: auto; border: 1px solid #000; margin: 0 auto 20px auto; display: block; }
         
-        .info-list { text-align: left; font-family: Arial, sans-serif; line-height: 1.8; border-top: 1px solid #eee; padding-top: 20px; }
-        button { margin-top: 30px; cursor: pointer; padding: 10px 20px; background: #4a5d23; color: white; border: none; }
+        .info-list { text-align: left; font-family: Arial, sans-serif; line-height: 1.6; border-top: 1px solid #eee; padding-top: 20px; }
+        button { margin-top: 30px; cursor: pointer; padding: 10px 20px; background: #4a5d23; color: white; border: none; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -96,8 +115,9 @@
     <div id="modal-overlay" onclick="closeModal()"></div>
     <div id="modal">
         <div class="status-group">
-            <span id="m-kia-badge" class="badge-kia">KIA</span>
-            <span id="m-wia-badge" class="badge-wia">WIA</span>
+            <span id="m-kia-badge" class="m-badge m-badge-kia">KIA</span>
+            <span id="m-swa-badge" class="m-badge m-badge-swa">SWA</span>
+            <span id="m-lwa-badge" class="m-badge m-badge-lwa">LWA</span>
         </div>
         <h2 id="m-name"></h2>
         <div id="m-lifespan"></div>
@@ -106,8 +126,9 @@
         <div class="info-list">
             <p><strong>Serial Number:</strong> <span id="m-sn"></span></p>
             <p><strong>Egress Date:</strong> <span id="m-egress"></span></p>
-            <p id="kia-date-row" style="display:none;"><strong>KIA Date:</strong> <span id="m-kia-date"></span></p>
-            <p id="wia-date-row" style="display:none;"><strong>Date wounded:</strong> <span id="m-wia-dates"></span></p>
+            <p id="kia-row" style="display:none;"><strong>KIA Date:</strong> <span id="m-kia-date"></span></p>
+            <p id="swa-row" style="display:none;"><strong>Seriously Wounded in Action Dates:</strong> <span id="m-swa-dates"></span></p>
+            <p id="lwa-row" style="display:none;"><strong>Lightly Wounded in Action Dates:</strong> <span id="m-lwa-dates"></span></p>
         </div>
         <button onclick="closeModal()">Close Details</button>
     </div>
@@ -135,25 +156,20 @@
                 if(!vet.name) return;
 
                 const isKIA = hasData(vet.date_killed);
-                const isWIA = hasData(vet.swa_dates) || hasData(vet.lwa_dates);
+                const isSWA = hasData(vet.swa_dates);
+                const isLWA = hasData(vet.lwa_dates);
 
                 const card = document.createElement('div');
                 card.className = 'card';
                 
-                // Front badge logic: allow both to appear stacked
                 let badgeHTML = `<div class="badge-container-front">`;
                 if (isKIA) badgeHTML += `<div class="card-badge card-badge-kia">KIA</div>`;
-                if (isWIA) badgeHTML += `<div class="card-badge card-badge-wia">WIA</div>`;
+                if (isSWA) badgeHTML += `<div class="card-badge card-badge-swa">SWA</div>`;
+                if (isLWA) badgeHTML += `<div class="card-badge card-badge-lwa">LWA</div>`;
                 badgeHTML += `</div>`;
 
-                const imgSrc = (vet.image_url) ? vet.image_url : "https://via.placeholder.com/300x400?text=No+Photo";
-                
-                card.innerHTML = `
-                    ${badgeHTML}
-                    <img src="${imgSrc}" loading="lazy">
-                    <h3>${vet.name}</h3>
-                `;
-                
+                const imgSrc = vet.image_url || "https://via.placeholder.com/300x400?text=No+Photo";
+                card.innerHTML = `${badgeHTML}<img src="${imgSrc}" loading="lazy"><h3>${vet.name}</h3>`;
                 card.onclick = () => showDetails(vet);
                 rosterDiv.appendChild(card);
             });
@@ -170,21 +186,24 @@
             // KIA Logic
             const isKIA = hasData(vet.date_killed);
             document.getElementById('m-kia-badge').style.display = isKIA ? "inline" : "none";
-            document.getElementById('kia-date-row').style.display = isKIA ? "block" : "none";
+            document.getElementById('kia-row').style.display = isKIA ? "block" : "none";
             document.getElementById('m-kia-date').innerText = vet.date_killed;
 
-            // WIA Logic (SWA + LWA)
-            const swa = hasData(vet.swa_dates) ? String(vet.swa_dates).trim() : "";
-            const lwa = hasData(vet.lwa_dates) ? String(vet.lwa_dates).trim() : "";
-            let allWoundDates = [swa, lwa].filter(x => x !== "").join(", ");
-            
-            const isWIA = allWoundDates !== "";
-            document.getElementById('m-wia-badge').style.display = isWIA ? "inline" : "none";
-            document.getElementById('wia-date-row').style.display = isWIA ? "block" : "none";
-            document.getElementById('m-wia-dates').innerText = allWoundDates;
+            // SWA Logic
+            const isSWA = hasData(vet.swa_dates);
+            document.getElementById('m-swa-badge').style.display = isSWA ? "inline" : "none";
+            document.getElementById('swa-row').style.display = isSWA ? "block" : "none";
+            document.getElementById('m-swa-dates').innerText = vet.swa_dates;
+
+            // LWA Logic
+            const isLWA = hasData(vet.lwa_dates);
+            document.getElementById('m-lwa-badge').style.display = isLWA ? "inline" : "none";
+            document.getElementById('lwa-row').style.display = isLWA ? "block" : "none";
+            document.getElementById('m-lwa-dates').innerText = vet.lwa_dates;
 
             document.getElementById('modal').style.display = 'block';
             document.getElementById('modal-overlay').style.display = 'block';
+            document.getElementById('modal').scrollTop = 0; // Reset scroll to top
         }
 
         function closeModal() {
