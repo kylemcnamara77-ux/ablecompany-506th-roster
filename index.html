@@ -7,8 +7,21 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body { font-family: 'Georgia', serif; background: #f4f1ea; color: #333; margin: 0; padding: 20px; }
-        h1 { text-align: center; color: #4a5d23; margin-bottom: 40px; }
+        h1 { text-align: center; color: #4a5d23; margin-bottom: 20px; }
         
+        /* Search Bar Styles */
+        #search-container { text-align: center; margin-bottom: 40px; }
+        #search-bar { 
+            width: 80%; 
+            max-width: 500px; 
+            padding: 12px 20px; 
+            font-size: 1.1em; 
+            border: 1px solid #ccc; 
+            border-radius: 25px;
+            outline: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
         #roster { 
             display: grid; 
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
@@ -29,15 +42,7 @@
             position: relative;
         }
         .card:hover { transform: translateY(-5px); }
-        
-        .card img { 
-            width: 100%; 
-            height: 250px; 
-            object-fit: cover; 
-            object-position: top center; 
-            background-color: #eee; 
-            display: block;
-        }
+        .card img { width: 100%; height: 250px; object-fit: cover; object-position: top center; background-color: #eee; display: block; }
 
         /* Stacked Badges on Card Front */
         .badge-container-front {
@@ -61,12 +66,12 @@
             min-width: 40px;
         }
         .card-badge-kia { background-color: #cc0000; }
-        .card-badge-swa { background-color: #ff8c00; } /* Orange for SWA */
-        .card-badge-lwa { background-color: #d4af37; } /* Gold for LWA */
+        .card-badge-swa { background-color: #ff8c00; }
+        .card-badge-lwa { background-color: #d4af37; }
+        .card-badge-pow { background-color: #000000; color: #ffffff; } /* Black for POW */
 
         /* --- MODAL (POPUP) STYLES --- */
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 99; }
-        
         #modal { 
             display: none; 
             position: fixed; 
@@ -78,25 +83,18 @@
             z-index: 100; 
             width: 90%; 
             max-width: 550px; 
-            text-align: center;
-            /* FIX: Added scrolling for the modal content */
+            text-align: center; 
             max-height: 85vh; 
             overflow-y: auto; 
-            box-sizing: border-box;
+            box-sizing: border-box; 
         }
         
-        .status-group { 
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            font-weight: bold; 
-            font-size: 1.4em;
-            margin-bottom: 10px;
-        }
+        .status-group { display: flex; justify-content: flex-end; gap: 10px; font-weight: bold; font-size: 1.4em; margin-bottom: 10px; }
         .m-badge { display: none; }
         .m-badge-kia { color: #cc0000; }
         .m-badge-swa { color: #ff8c00; }
         .m-badge-lwa { color: #d4af37; }
+        .m-badge-pow { color: #000000; }
 
         #m-name { font-size: 2.2em; margin: 0; text-transform: uppercase; line-height: 1.1; }
         #m-lifespan { font-size: 1.2em; font-weight: bold; margin: 5px 0; }
@@ -110,6 +108,11 @@
 <body>
 
     <h1>Company Roster</h1>
+
+    <div id="search-container">
+        <input type="text" id="search-bar" placeholder="Search by name, serial number, or status (KIA/SWA/LWA/POW)..." onkeyup="filterRoster()">
+    </div>
+    
     <div id="roster">Loading roster...</div>
 
     <div id="modal-overlay" onclick="closeModal()"></div>
@@ -118,6 +121,7 @@
             <span id="m-kia-badge" class="m-badge m-badge-kia">KIA</span>
             <span id="m-swa-badge" class="m-badge m-badge-swa">SWA</span>
             <span id="m-lwa-badge" class="m-badge m-badge-lwa">LWA</span>
+            <span id="m-pow-badge" class="m-badge m-badge-pow">POW</span>
         </div>
         <h2 id="m-name"></h2>
         <div id="m-lifespan"></div>
@@ -129,11 +133,13 @@
             <p id="kia-row" style="display:none;"><strong>KIA Date:</strong> <span id="m-kia-date"></span></p>
             <p id="swa-row" style="display:none;"><strong>Seriously Wounded in Action Dates:</strong> <span id="m-swa-dates"></span></p>
             <p id="lwa-row" style="display:none;"><strong>Lightly Wounded in Action Dates:</strong> <span id="m-lwa-dates"></span></p>
+            <p id="pow-row" style="display:none;"><strong>Date Captured:</strong> <span id="m-pow-date"></span></p>
         </div>
         <button onclick="closeModal()">Close Details</button>
     </div>
 
     <script>
+        let allVeterans = []; 
         const googleSheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSuyvT7cz5osdEQqROHhV0BkW8IAttDbwDMp9_oj0Ce0MOHTwmANIGQ4WZMJNS173g2ek4N5juzF057/pub?gid=1531532639&single=true&output=csv";
 
         Papa.parse(googleSheetUrl + "&cache_break=" + new Date().getTime(), {
@@ -141,12 +147,32 @@
             header: true,
             skipEmptyLines: true,
             transformHeader: h => h.trim().toLowerCase().replace(/\s/g, '_'),
-            complete: results => displayRoster(results.data)
+            complete: results => {
+                allVeterans = results.data;
+                displayRoster(allVeterans);
+            }
         });
 
         function hasData(val) {
             const s = String(val || "").trim();
             return s !== "" && s.toUpperCase() !== "N/A";
+        }
+
+        function filterRoster() {
+            const query = document.getElementById('search-bar').value.toLowerCase();
+            const filtered = allVeterans.filter(vet => {
+                const name = (vet.name || "").toLowerCase();
+                const sn = (vet.sn || "").toLowerCase();
+                const isKIA = hasData(vet.date_killed) ? "kia" : "";
+                const isSWA = hasData(vet.swa_dates) ? "swa" : "";
+                const isLWA = hasData(vet.lwa_dates) ? "lwa" : "";
+                const isPOW = hasData(vet.pow) ? "pow" : "";
+                
+                return name.includes(query) || sn.includes(query) || 
+                       isKIA.includes(query) || isSWA.includes(query) || 
+                       isLWA.includes(query) || isPOW.includes(query);
+            });
+            displayRoster(filtered);
         }
 
         function displayRoster(data) {
@@ -158,6 +184,7 @@
                 const isKIA = hasData(vet.date_killed);
                 const isSWA = hasData(vet.swa_dates);
                 const isLWA = hasData(vet.lwa_dates);
+                const isPOW = hasData(vet.pow);
 
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -166,6 +193,7 @@
                 if (isKIA) badgeHTML += `<div class="card-badge card-badge-kia">KIA</div>`;
                 if (isSWA) badgeHTML += `<div class="card-badge card-badge-swa">SWA</div>`;
                 if (isLWA) badgeHTML += `<div class="card-badge card-badge-lwa">LWA</div>`;
+                if (isPOW) badgeHTML += `<div class="card-badge card-badge-pow">POW</div>`;
                 badgeHTML += `</div>`;
 
                 const imgSrc = vet.image_url || "https://via.placeholder.com/300x400?text=No+Photo";
@@ -201,9 +229,15 @@
             document.getElementById('lwa-row').style.display = isLWA ? "block" : "none";
             document.getElementById('m-lwa-dates').innerText = vet.lwa_dates;
 
+            // POW Logic
+            const isPOW = hasData(vet.pow);
+            document.getElementById('m-pow-badge').style.display = isPOW ? "inline" : "none";
+            document.getElementById('pow-row').style.display = isPOW ? "block" : "none";
+            document.getElementById('m-pow-date').innerText = vet.pow;
+
             document.getElementById('modal').style.display = 'block';
             document.getElementById('modal-overlay').style.display = 'block';
-            document.getElementById('modal').scrollTop = 0; // Reset scroll to top
+            document.getElementById('modal').scrollTop = 0;
         }
 
         function closeModal() {
