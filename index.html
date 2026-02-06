@@ -1,3 +1,14 @@
+This is a great addition for providing immediate historical context. Calculating age accurately across different date formats (especially with old records) can be tricky, so I've added a robust calculateAge function to handle this logic.
+
+Key Logic Updates:
+Age Calculation: The code now calculates the difference between the birth year and death year. It also checks the month and day to ensure the age doesn't "round up" if they hadn't reached their birthday yet in the year they passed.
+
+Conditional Display: The age will only appear if both a valid Date of Birth and a valid Date of Death (or KIA date) are present.
+
+Integrated Formatting: It works seamlessly with your "Died" and "KIA" rows.
+
+Final Master Code (index.html)
+HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,20 +27,18 @@
 
         #roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 25px; max-width: 1200px; margin: 0 auto; }
 
-        /* --- UPDATED 3-D GALLERY CARD STYLES --- */
         .card { 
             background: white; 
-            border: 4px solid #333; /* Thick 3-D Border */
+            border: 4px solid #333; 
             padding: 25px; 
             text-align: center; 
             cursor: pointer; 
             transition: transform 0.2s; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.4); /* Deep 3-D Shadow */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4); 
             position: relative; 
         }
         .card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(0,0,0,0.5); }
         
-        /* Inner Gold Border for Gallery Cards */
         .card::after {
             content: "";
             position: absolute;
@@ -49,7 +58,6 @@
         .card-badge-lwa { background-color: #d4af37; }
         .card-badge-pow { background-color: #000000; color: #ffffff; }
 
-        /* --- MODAL STYLES --- */
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 999; }
         #modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 4px solid #333; z-index: 1000; width: 90%; max-width: 500px; text-align: center; max-height: 90vh; overflow-y: auto; box-sizing: border-box; box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
         
@@ -120,7 +128,6 @@
             download: true, header: true, skipEmptyLines: true,
             transformHeader: h => h.trim().toLowerCase().replace(/\s/g, '_'),
             complete: results => { 
-                // --- NEW: Alphabetical Sorting by Last Name ---
                 allVeterans = results.data.filter(v => v.name).sort((a, b) => {
                     const nameA = a.name.trim().split(" ");
                     const nameB = b.name.trim().split(" ");
@@ -135,6 +142,21 @@
         function hasData(val) {
             const s = String(val || "").trim();
             return s !== "" && s.toUpperCase() !== "N/A";
+        }
+
+        // --- NEW: Helper to calculate age at death ---
+        function calculateAge(dobStr, dodStr) {
+            if (!hasData(dobStr) || !hasData(dodStr)) return "";
+            const birth = new Date(dobStr);
+            const death = new Date(dodStr);
+            if (isNaN(birth) || isNaN(death)) return "";
+
+            let age = death.getFullYear() - birth.getFullYear();
+            const monthDiff = death.getMonth() - birth.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && death.getDate() < birth.getDate())) {
+                age--;
+            }
+            return ` (Age ${age})`;
         }
 
         function formatSingleDate(dateStr) {
@@ -212,21 +234,31 @@
                 { label: "Date IOJ", val: vet.ioj_dates },
                 { label: "LWA Dates", val: vet.lwa_dates },
                 { label: "SWA Dates", val: vet.swa_dates },
-                { label: "Date Captured", val: vet.pow },
-                { label: "KIA", val: vet.date_killed }
+                { label: "Date Captured", val: vet.pow }
             ];
             rows.forEach(row => {
                 if(hasData(row.val)) {
                     infoBox.innerHTML += `<p><strong>${row.label}:</strong> ${formatDate(row.val)}</p>`;
                 }
             });
+
+            // Special KIA Age Logic
+            if(hasData(vet.date_killed)) {
+                const ageAtKIA = calculateAge(vet.date_of_birth, vet.date_killed);
+                infoBox.innerHTML += `<p><strong>KIA:</strong> ${formatDate(vet.date_killed)}${ageAtKIA}</p>`;
+            }
+
             const sameAsKIA = hasData(vet.egress_date) && hasData(vet.date_killed) && (vet.egress_date.trim() === vet.date_killed.trim());
             if (hasData(vet.egress_date) && !sameAsKIA) {
                 infoBox.innerHTML += `<p><strong>Egress:</strong> ${formatDate(vet.egress_date)}</p>`;
             }
+
+            // Special Died Age Logic (only if no KIA)
             if (hasData(vet.date_of_death) && !hasData(vet.date_killed)) {
-                infoBox.innerHTML += `<p><strong>Died:</strong> ${formatDate(vet.date_of_death)}</p>`;
+                const ageAtDeath = calculateAge(vet.date_of_birth, vet.date_of_death);
+                infoBox.innerHTML += `<p><strong>Died:</strong> ${formatDate(vet.date_of_death)}${ageAtDeath}</p>`;
             }
+
             const linkBox = document.getElementById('link-section');
             linkBox.innerHTML = "";
             if(hasData(vet.nara_link)) linkBox.innerHTML += `<a href="${vet.nara_link}" target="_blank" class="vet-link">NARA Record</a>`;
